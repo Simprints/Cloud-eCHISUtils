@@ -35,7 +35,7 @@ func TestCheck(t *testing.T) {
 		{
 			name:              "wrong event type should return error",
 			input:             `{"events": [{"id": "anID", "type": "WrongEventType", "payload": {}}]}`,
-			expectedErrPrefix: "expect event type",
+			expectedErrPrefix: "expect event type EnrolmentRecordCreation",
 		},
 		{
 			name:              "empty subjectId should return error",
@@ -50,7 +50,7 @@ func TestCheck(t *testing.T) {
 		{
 			name:              "wrong moduleId className should return error",
 			input:             `{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"aSubjectID","projectId":"aProjectID","moduleId":{"className":"wrong","value":"aModuleID"},"attendantId":{"className":"TokenizableString.Tokenized","value":"anAttendantID"},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","quality":0.8,"template":"aTemplate"}],"format":"ISO_19794_2","type":"FINGERPRINT_REFERENCE"}]}}]}`,
-			expectedErrPrefix: "expect moduleId to have className",
+			expectedErrPrefix: "expect moduleId to have className TokenizableString.Tokenized",
 		},
 		{
 			name:              "empty moduleId should return error",
@@ -60,7 +60,7 @@ func TestCheck(t *testing.T) {
 		{
 			name:              "wrong attendantID className should return error",
 			input:             `{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"aSubjectID","projectId":"aProjectID","moduleId":{"className":"TokenizableString.Tokenized","value":"aModuleID"},"attendantId":{"className":"wrong","value":"anAttendantID"},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","quality":0.8,"template":"aTemplate"}],"format":"ISO_19794_2","type":"FINGERPRINT_REFERENCE"}]}}]}`,
-			expectedErrPrefix: "expect attendantId to have className",
+			expectedErrPrefix: "expect attendantId to have className TokenizableString.Tokenized",
 		},
 		{
 			name:              "empty attendantId should return error",
@@ -80,12 +80,12 @@ func TestCheck(t *testing.T) {
 		{
 			name:              "wrong biometric reference type should return error",
 			input:             `{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"aSubjectID","projectId":"aProjectID","moduleId":{"className":"TokenizableString.Tokenized","value":"aModuleID"},"attendantId":{"className":"TokenizableString.Tokenized","value":"anAttendantID"},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","quality":0.8,"template":"aTemplate"}],"format":"ISO_19794_2","type":"WRONG_TYPE"}]}}]}`,
-			expectedErrPrefix: "expect biometric reference type",
+			expectedErrPrefix: "expect biometric reference type FINGERPRINT_REFERENCE",
 		},
 		{
 			name:              "wrong biometric reference format should return error",
 			input:             `{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"aSubjectID","projectId":"aProjectID","moduleId":{"className":"TokenizableString.Tokenized","value":"aModuleID"},"attendantId":{"className":"TokenizableString.Tokenized","value":"anAttendantID"},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","quality":0.8,"template":"aTemplate"}],"format":"WRONG_FORMAT","type":"FINGERPRINT_REFERENCE"}]}}]}`,
-			expectedErrPrefix: "expect biometric reference format",
+			expectedErrPrefix: "expect biometric reference format ISO_19794_2",
 		},
 		{
 			name:              "valid input should return the correct subject specification",
