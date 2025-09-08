@@ -19,41 +19,41 @@ func Check(input string) (SubjectSpecification, error) {
 		return SubjectSpecification{}, errors.Join(SubjectActionsError{Detail: "could not unmarshal input into SIDEvents"}, err)
 	}
 	if len(sidEvents.Events) != 1 {
-		return SubjectSpecification{}, SubjectActionsError{Field: "events", Detail: fmt.Sprintf("expect length 1, got %d", len(sidEvents.Events))}
+		return SubjectSpecification{}, SubjectActionsError{Field: "events", Detail: errorDetailUnexpectedLength(1, len(sidEvents.Events))}
 	}
 	if sidEvents.Events[0].Type != requiredSIDEventType {
-		return SubjectSpecification{}, SubjectActionsError{Field: "events[0].type", Detail: fmt.Sprintf("expect %s, got %s", requiredSIDEventType, sidEvents.Events[0].Type)}
+		return SubjectSpecification{}, SubjectActionsError{Field: "events[0].type", Detail: errorDetailUnexpectedField(requiredSIDEventType, sidEvents.Events[0].Type)}
 	}
 
 	payload := sidEvents.Events[0].Payload
 	if len(payload.SubjectID) == 0 {
-		return SubjectSpecification{}, SubjectActionsError{Field: "subjectId", Detail: "empty"}
+		return SubjectSpecification{}, SubjectActionsError{Field: "subjectId", Detail: errorDetailEmptyField}
 	}
 	if len(payload.ProjectID) == 0 {
-		return SubjectSpecification{}, SubjectActionsError{Field: "projectId", Detail: "empty"}
+		return SubjectSpecification{}, SubjectActionsError{Field: "projectId", Detail: errorDetailEmptyField}
 	}
 	if payload.ModuleID.ClassName != requiredStringValueClassName {
-		return SubjectSpecification{}, SubjectActionsError{Field: "moduleId.className", Detail: fmt.Sprintf("expect %s, got %s", requiredStringValueClassName, payload.ModuleID.ClassName)}
+		return SubjectSpecification{}, SubjectActionsError{Field: "moduleId.className", Detail: errorDetailUnexpectedField(requiredStringValueClassName, payload.ModuleID.ClassName)}
 	}
 	if len(payload.ModuleID.Value) == 0 {
-		return SubjectSpecification{}, SubjectActionsError{Field: "moduleId.value", Detail: "empty"}
+		return SubjectSpecification{}, SubjectActionsError{Field: "moduleId.value", Detail: errorDetailEmptyField}
 	}
 	if payload.AttendantID.ClassName != requiredStringValueClassName {
-		return SubjectSpecification{}, SubjectActionsError{Field: "attendantId.className", Detail: fmt.Sprintf("expect %s, got %s", requiredStringValueClassName, payload.AttendantID.ClassName)}
+		return SubjectSpecification{}, SubjectActionsError{Field: "attendantId.className", Detail: errorDetailUnexpectedField(requiredStringValueClassName, payload.AttendantID.ClassName)}
 	}
 	if len(payload.AttendantID.Value) == 0 {
-		return SubjectSpecification{}, SubjectActionsError{Field: "attendantId.value", Detail: "empty"}
+		return SubjectSpecification{}, SubjectActionsError{Field: "attendantId.value", Detail: errorDetailEmptyField}
 	}
 
 	if len(payload.BiometricReferences) != 1 {
-		return SubjectSpecification{}, SubjectActionsError{Field: "biometricReferences", Detail: fmt.Sprintf("expect length 1, got %d", len(payload.BiometricReferences))}
+		return SubjectSpecification{}, SubjectActionsError{Field: "biometricReferences", Detail: errorDetailUnexpectedLength(1, len(payload.BiometricReferences))}
 	}
 	reference := payload.BiometricReferences[0]
 	if reference.Type != requiredSIDBiometricReferenceType {
-		return SubjectSpecification{}, SubjectActionsError{Field: "biometricReferences[0].type", Detail: fmt.Sprintf("expect %s, got %s", requiredSIDBiometricReferenceType, reference.Type)}
+		return SubjectSpecification{}, SubjectActionsError{Field: "biometricReferences[0].type", Detail: errorDetailUnexpectedField(requiredSIDBiometricReferenceType, reference.Type)}
 	}
 	if reference.Format != requiredSIDBiometricReferenceFormat {
-		return SubjectSpecification{}, SubjectActionsError{Field: "biometricReferences[0].format", Detail: fmt.Sprintf("expect %s, got %s", requiredSIDBiometricReferenceFormat, reference.Format)}
+		return SubjectSpecification{}, SubjectActionsError{Field: "biometricReferences[0].format", Detail: errorDetailUnexpectedField(requiredSIDBiometricReferenceFormat, reference.Format)}
 	}
 
 	subjectSpecification := SubjectSpecification{
@@ -177,3 +177,15 @@ const (
 	requiredSIDBiometricReferenceType   = "FINGERPRINT_REFERENCE"
 	requiredSIDBiometricReferenceFormat = "ISO_19794_2"
 )
+
+const (
+	errorDetailEmptyField = "empty field"
+)
+
+func errorDetailUnexpectedField(expected string, got string) string {
+	return fmt.Sprintf("expect %s, got %s", expected, got)
+}
+
+func errorDetailUnexpectedLength(expected int, got int) string {
+	return fmt.Sprintf("expect length %d, got %d", expected, got)
+}
