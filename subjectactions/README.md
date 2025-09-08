@@ -1,5 +1,13 @@
 # subjectactions
 
+## Install the Go library
+
+Run the following command
+
+```shell
+go get github.com/simprints/cloud-echisutils/subjectactions
+```
+
 ## Test
 
 Run `go test ./...`

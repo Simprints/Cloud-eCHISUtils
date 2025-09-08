@@ -104,7 +104,7 @@ type SIDEvent struct {
 	ID string `json:"id"`
 	// Type is the kind of event this is (in our case, this should always be EnrolmentRecordCreation).
 	Type string `json:"type"`
-	// Payload for an EnrolmentRecordCreation event is the data associated with the creation of an enrloment record in SID.
+	// Payload for an EnrolmentRecordCreation event is the data associated with the creation of an enrolment record in SID.
 	Payload SIDEnrolmentRecordCreationPayload `json:"payload"`
 }
 
