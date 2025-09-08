@@ -11,49 +11,49 @@ import (
 // It returns a non-nil error when the input string is invalid.
 func Check(input string) (SubjectSpecification, error) {
 	if len(input) == 0 {
-		return SubjectSpecification{}, errors.New("input is empty")
+		return SubjectSpecification{}, SubjectActionsError{Detail: "input is empty"}
 	}
 
 	var sidEvents SIDEvents
 	if err := json.Unmarshal([]byte(input), &sidEvents); err != nil {
-		return SubjectSpecification{}, errors.Join(errors.New("could not unmarshal input into SIDEvents"), err)
+		return SubjectSpecification{}, errors.Join(SubjectActionsError{Detail: "could not unmarshal input into SIDEvents"}, err)
 	}
 	if len(sidEvents.Events) != 1 {
-		return SubjectSpecification{}, fmt.Errorf("expect 1 event, got %d", len(sidEvents.Events))
+		return SubjectSpecification{}, SubjectActionsError{Field: "events", Detail: fmt.Sprintf("expect length 1, got %d", len(sidEvents.Events))}
 	}
-	if sidEvents.Events[0].Type != RequiredSIDEventType {
-		return SubjectSpecification{}, fmt.Errorf("expect event type %s event, got %s", RequiredSIDEventType, sidEvents.Events[0].Type)
+	if sidEvents.Events[0].Type != requiredSIDEventType {
+		return SubjectSpecification{}, SubjectActionsError{Field: "events[0].type", Detail: fmt.Sprintf("expect %s, got %s", requiredSIDEventType, sidEvents.Events[0].Type)}
 	}
 
 	payload := sidEvents.Events[0].Payload
 	if len(payload.SubjectID) == 0 {
-		return SubjectSpecification{}, errors.New("empty subjectId")
+		return SubjectSpecification{}, SubjectActionsError{Field: "subjectId", Detail: "empty"}
 	}
 	if len(payload.ProjectID) == 0 {
-		return SubjectSpecification{}, errors.New("empty projectId")
+		return SubjectSpecification{}, SubjectActionsError{Field: "projectId", Detail: "empty"}
 	}
-	if payload.ModuleID.ClassName != RequiredStringValueClassName {
-		return SubjectSpecification{}, fmt.Errorf("expect moduleId to have className %s but got %s", RequiredStringValueClassName, payload.ModuleID.ClassName)
+	if payload.ModuleID.ClassName != requiredStringValueClassName {
+		return SubjectSpecification{}, SubjectActionsError{Field: "moduleId.className", Detail: fmt.Sprintf("expect %s, got %s", requiredStringValueClassName, payload.ModuleID.ClassName)}
 	}
 	if len(payload.ModuleID.Value) == 0 {
-		return SubjectSpecification{}, errors.New("empty moduleId")
+		return SubjectSpecification{}, SubjectActionsError{Field: "moduleId.value", Detail: "empty"}
 	}
-	if payload.AttendantID.ClassName != RequiredStringValueClassName {
-		return SubjectSpecification{}, fmt.Errorf("expect attendantId to have className %s but got %s", RequiredStringValueClassName, payload.AttendantID.ClassName)
+	if payload.AttendantID.ClassName != requiredStringValueClassName {
+		return SubjectSpecification{}, SubjectActionsError{Field: "attendantId.className", Detail: fmt.Sprintf("expect %s, got %s", requiredStringValueClassName, payload.AttendantID.ClassName)}
 	}
 	if len(payload.AttendantID.Value) == 0 {
-		return SubjectSpecification{}, errors.New("empty attendantId")
+		return SubjectSpecification{}, SubjectActionsError{Field: "attendantId.value", Detail: "empty"}
 	}
 
 	if len(payload.BiometricReferences) != 1 {
-		return SubjectSpecification{}, fmt.Errorf("expect 1 biometric reference, but got %d", len(payload.BiometricReferences))
+		return SubjectSpecification{}, SubjectActionsError{Field: "biometricReferences", Detail: fmt.Sprintf("expect length 1, got %d", len(payload.BiometricReferences))}
 	}
 	reference := payload.BiometricReferences[0]
-	if reference.Type != RequiredSIDBiometricReferenceType {
-		return SubjectSpecification{}, fmt.Errorf("expect biometric reference type %s, got %s", RequiredSIDBiometricReferenceType, reference.Type)
+	if reference.Type != requiredSIDBiometricReferenceType {
+		return SubjectSpecification{}, SubjectActionsError{Field: "biometricReferences[0].type", Detail: fmt.Sprintf("expect %s, got %s", requiredSIDBiometricReferenceType, reference.Type)}
 	}
-	if reference.Format != RequiredSIDBiometricReferenceFormat {
-		return SubjectSpecification{}, fmt.Errorf("expect biometric reference format %s, got %s", RequiredSIDBiometricReferenceFormat, reference.Format)
+	if reference.Format != requiredSIDBiometricReferenceFormat {
+		return SubjectSpecification{}, SubjectActionsError{Field: "biometricReferences[0].format", Detail: fmt.Sprintf("expect %s, got %s", requiredSIDBiometricReferenceFormat, reference.Format)}
 	}
 
 	subjectSpecification := SubjectSpecification{
@@ -77,6 +77,81 @@ type SubjectSpecification struct {
 	TokenizedAtendantID string
 }
 
+// SubjectActionsError stores details about the way in which a given input failed to pass `Check()`.
+type SubjectActionsError struct {
+	// Detail contains information about what was wrong.
+	Detail string
+	// Field contains information about which field had something wrong if it is non-empty.
+	Field string
+}
+
+// Error makes SubjectActionsError implement error.
+func (e SubjectActionsError) Error() string {
+	if e.Field == "" {
+		return e.Detail
+	}
+	return fmt.Sprintf("%s: %s", e.Field, e.Detail)
+}
+
+// SIDEvents represents a collection of events generated by Simprints ID.
+type SIDEvents struct {
+	Events []SIDEvent `json:"events"`
+}
+
+// SIDEvent represents a single event generated by Simprints ID.
+type SIDEvent struct {
+	// ID is the unique ID of this event.
+	ID string `json:"id"`
+	// Type is the kind of event this is (in our case, this should always be EnrolmentRecordCreation).
+	Type string `json:"type"`
+	// Payload for an EnrolmentRecordCreation event is the data associated with the creation of an enrloment record in SID.
+	Payload SIDEnrolmentRecordCreationPayload `json:"payload"`
+}
+
+// Look at https://simprints.gitbook.io/docs/development/simprints-for-developers/other-intergrations/commcare-integration/cosync for more documentation of SID <> CommCare integration
+type SIDEnrolmentRecordCreationPayload struct {
+	/// SubjectID is the ID of the person (a.k.a 'subject') this enrolment record belongs to, and is the same as `simprintsId` or `guid` in the integration.
+	SubjectID string `json:"subjectId"`
+	// ProjectID is the ID of the Simprints project this enrolment record belongs to, and is the same as `projectId` used in integration.
+	ProjectID string `json:"projectId"`
+	// ModuleID is the ID of the Simprints module this enrolment record belongs to, and is the same as `moduleId` used in integration.
+	ModuleID StringValue `json:"moduleId"`
+	// AttendantID is the ID of the attendant (a.k.a 'user') that enrolled this subject, and is the same as `userId` used in integration.
+	AttendantID StringValue `json:"attendantId"`
+	// BiometricReferences contains all biometric data attached to this subject.
+	BiometricReferences []SIDBiometricReference `json:"biometricReferences"`
+}
+
+// StringValue is a struct that a potentially tokenized (encrypted) string.
+type StringValue struct {
+	// ClassName is "TokenizableString.Tokenized" when the string is tokenized and "TokenizableString.Raw" when not.
+	ClassName string `json:"className"`
+	// Value is the actual tokenized or raw string (depending on what ClassName is).
+	Value string `json:"value"`
+}
+
+// SIDBiometricReference represents a particular kind of biometric data.
+type SIDBiometricReference struct {
+	// ID is the unique ID of this biometric reference.
+	ID string `json:"id"`
+	// Templates is a collection of biometric templates that make up this biometric reference (in our case, just fingerprint templates).
+	Templates []SIDTemplate `json:"templates"`
+	// Format is the format of the biometric templates (in our case, just "ISO_19794_2").
+	Format string `json:"format"`
+	// Type is the biometric modality of this biometric reference (in our case, just 'FINGERPRINT_REFERENCE').
+	Type string `json:"type"`
+}
+
+// SIDTemplate represents a single biometric template.
+type SIDTemplate struct {
+	// Quality is the biometric quality of the template (the higher the quality, the better).
+	Quality float64 `json:"quality"`
+	// Template is the base64 encoded biometric template data.
+	Template string `json:"template"`
+	// Finger represents which finger this biometric template corresponds to (e.g. RIGHT_THUMB).
+	Finger string `json:"finger"`
+}
+
 // SID expects the following schema (where '*' denotes some array index)
 // For this project, we expect only 1 EnrolmentRecordCreation event.
 // For this project, we only expect ISO templates for the fingerprint modality.
@@ -97,44 +172,8 @@ type SubjectSpecification struct {
 // > events.*.payload.biometricReferences.*.templates.*.template
 
 const (
-	RequiredSIDEventType                = "EnrolmentRecordCreation"
-	RequiredStringValueClassName        = "TokenizableString.Tokenized"
-	RequiredSIDBiometricReferenceType   = "FINGERPRINT_REFERENCE"
-	RequiredSIDBiometricReferenceFormat = "ISO_19794_2"
+	requiredSIDEventType                = "EnrolmentRecordCreation"
+	requiredStringValueClassName        = "TokenizableString.Tokenized"
+	requiredSIDBiometricReferenceType   = "FINGERPRINT_REFERENCE"
+	requiredSIDBiometricReferenceFormat = "ISO_19794_2"
 )
-
-type SIDEvents struct {
-	Events []SIDEvent `json:"events"`
-}
-
-type SIDEvent struct {
-	ID      string                            `json:"id"`
-	Type    string                            `json:"type"`
-	Payload SIDEnrolmentRecordCreationPayload `json:"payload"`
-}
-
-type SIDEnrolmentRecordCreationPayload struct {
-	SubjectID           string                  `json:"subjectId"`
-	ProjectID           string                  `json:"projectId"`
-	ModuleID            StringValue             `json:"moduleId"`
-	AttendantID         StringValue             `json:"attendantId"`
-	BiometricReferences []SIDBiometricReference `json:"biometricReferences"`
-}
-
-type StringValue struct {
-	ClassName string `json:"className"`
-	Value     string `json:"value"`
-}
-
-type SIDBiometricReference struct {
-	ID        string        `json:"id"`
-	Templates []SIDTemplate `json:"templates"`
-	Format    string        `json:"format"`
-	Type      string        `json:"type"`
-}
-
-type SIDTemplate struct {
-	Quality  float64 `json:"quality"`
-	Template string  `json:"template"`
-	Finger   string  `json:"finger"`
-}

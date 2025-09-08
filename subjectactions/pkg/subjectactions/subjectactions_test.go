@@ -1,116 +1,117 @@
 package subjectactions
 
 import (
-	"strings"
+	"fmt"
+	"log"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCheck(t *testing.T) {
-	tcs := []struct {
-		name              string
-		input             string
-		expectedErrPrefix string
-		expectedResult    SubjectSpecification
+	tcs := map[string]struct {
+		input          string
+		expectedErr    string
+		expectedResult SubjectSpecification
 	}{
-		{
-			name:              "empty string should return error",
-			input:             "",
-			expectedErrPrefix: "input is empty",
+		"empty string should return error": {
+			input:       "",
+			expectedErr: "input is empty",
 		},
-		{
-			name:              "invalid json should return error",
-			input:             "invalid json",
-			expectedErrPrefix: "could not unmarshal",
+		"invalid json should return error": {
+			input:       "invalid json",
+			expectedErr: "could not unmarshal input into SIDEvents",
 		},
-		{
-			name:              "empty events array should return error",
-			input:             `{"events": []}`,
-			expectedErrPrefix: "expect 1 event",
+		"empty events array should return error": {
+			input:       `{"events": []}`,
+			expectedErr: "events: expect length 1",
 		},
-		{
-			name:              "multiple events should return error",
-			input:             `{"events": [{}, {}]}`,
-			expectedErrPrefix: "expect 1 event",
+		"multiple events should return error": {
+			input:       `{"events": [{}, {}]}`,
+			expectedErr: "events: expect length 1",
 		},
-		{
-			name:              "wrong event type should return error",
-			input:             `{"events": [{"id": "anID", "type": "WrongEventType", "payload": {}}]}`,
-			expectedErrPrefix: "expect event type EnrolmentRecordCreation",
+		"wrong event type should return error": {
+			input:       `{"events": [{"id": "anID", "type": "WrongEventType", "payload": {}}]}`,
+			expectedErr: "events[0].type: expect EnrolmentRecordCreation, got WrongEventType",
 		},
-		{
-			name:              "empty subjectId should return error",
-			input:             `{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"","projectId":"aProjectID","moduleId":{"className":"TokenizableString.Tokenized","value":"aModuleID"},"attendantId":{"className":"TokenizableString.Tokenized","value":"anAttendantID"},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","quality":0.8,"template":"aTemplate"}],"format":"ISO_19794_2","type":"FINGERPRINT_REFERENCE"}]}}]}`,
-			expectedErrPrefix: "empty subjectId",
+		"empty subjectId should return error": {
+			input:       `{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"","projectId":"aProjectID","moduleId":{"className":"TokenizableString.Tokenized","value":"aTokenizedModuleID"},"attendantId":{"className":"TokenizableString.Tokenized","value":"aTokenizedAttendantID"},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","quality":0.8,"template":"aTemplate"}],"format":"ISO_19794_2","type":"FINGERPRINT_REFERENCE"}]}}]}`,
+			expectedErr: "subjectId: empty",
 		},
-		{
-			name:              "empty projectId should return error",
-			input:             `{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"aSubjectID","projectId":"","moduleId":{"className":"TokenizableString.Tokenized","value":"aModuleID"},"attendantId":{"className":"TokenizableString.Tokenized","value":"anAttendantID"},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","quality":0.8,"template":"aTemplate"}],"format":"ISO_19794_2","type":"FINGERPRINT_REFERENCE"}]}}]}`,
-			expectedErrPrefix: "empty projectId",
+		"empty projectId should return error": {
+			input:       `{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"aSubjectID","projectId":"","moduleId":{"className":"TokenizableString.Tokenized","value":"aTokenizedModuleID"},"attendantId":{"className":"TokenizableString.Tokenized","value":"aTokenizedAttendantID"},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","quality":0.8,"template":"aTemplate"}],"format":"ISO_19794_2","type":"FINGERPRINT_REFERENCE"}]}}]}`,
+			expectedErr: "projectId: empty",
 		},
-		{
-			name:              "wrong moduleId className should return error",
-			input:             `{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"aSubjectID","projectId":"aProjectID","moduleId":{"className":"wrong","value":"aModuleID"},"attendantId":{"className":"TokenizableString.Tokenized","value":"anAttendantID"},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","quality":0.8,"template":"aTemplate"}],"format":"ISO_19794_2","type":"FINGERPRINT_REFERENCE"}]}}]}`,
-			expectedErrPrefix: "expect moduleId to have className TokenizableString.Tokenized",
+		"wrong moduleId className should return error": {
+			input:       `{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"aSubjectID","projectId":"aProjectID","moduleId":{"className":"wrong","value":"aTokenizedModuleID"},"attendantId":{"className":"TokenizableString.Tokenized","value":"aTokenizedAttendantID"},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","quality":0.8,"template":"aTemplate"}],"format":"ISO_19794_2","type":"FINGERPRINT_REFERENCE"}]}}]}`,
+			expectedErr: "moduleId.className: expect TokenizableString.Tokenized, got wrong",
 		},
-		{
-			name:              "empty moduleId should return error",
-			input:             `{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"aSubjectID","projectId":"aProjectID","moduleId":{"className":"TokenizableString.Tokenized","value":""},"attendantId":{"className":"TokenizableString.Tokenized","value":"anAttendantID"},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","quality":0.8,"template":"aTemplate"}],"format":"ISO_19794_2","type":"FINGERPRINT_REFERENCE"}]}}]}`,
-			expectedErrPrefix: "empty moduleId",
+		"empty moduleId should return error": {
+			input:       `{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"aSubjectID","projectId":"aProjectID","moduleId":{"className":"TokenizableString.Tokenized","value":""},"attendantId":{"className":"TokenizableString.Tokenized","value":"aTokenizedAttendantID"},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","quality":0.8,"template":"aTemplate"}],"format":"ISO_19794_2","type":"FINGERPRINT_REFERENCE"}]}}]}`,
+			expectedErr: "moduleId.value: empty",
 		},
-		{
-			name:              "wrong attendantID className should return error",
-			input:             `{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"aSubjectID","projectId":"aProjectID","moduleId":{"className":"TokenizableString.Tokenized","value":"aModuleID"},"attendantId":{"className":"wrong","value":"anAttendantID"},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","quality":0.8,"template":"aTemplate"}],"format":"ISO_19794_2","type":"FINGERPRINT_REFERENCE"}]}}]}`,
-			expectedErrPrefix: "expect attendantId to have className TokenizableString.Tokenized",
+		"wrong attendantID className should return error": {
+			input:       `{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"aSubjectID","projectId":"aProjectID","moduleId":{"className":"TokenizableString.Tokenized","value":"aTokenizedModuleID"},"attendantId":{"className":"wrong","value":"aTokenizedAttendantID"},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","quality":0.8,"template":"aTemplate"}],"format":"ISO_19794_2","type":"FINGERPRINT_REFERENCE"}]}}]}`,
+			expectedErr: "attendantId.className: expect TokenizableString.Tokenized, got wrong",
 		},
-		{
-			name:              "empty attendantId should return error",
-			input:             `{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"aSubjectID","projectId":"aProjectID","moduleId":{"className":"TokenizableString.Tokenized","value":"aModuleID"},"attendantId":{"className":"TokenizableString.Tokenized","value":""},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","quality":0.8,"template":"aTemplate"}],"format":"ISO_19794_2","type":"FINGERPRINT_REFERENCE"}]}}]}`,
-			expectedErrPrefix: "empty attendantId",
+		"empty attendantId should return error": {
+			input:       `{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"aSubjectID","projectId":"aProjectID","moduleId":{"className":"TokenizableString.Tokenized","value":"aTokenizedModuleID"},"attendantId":{"className":"TokenizableString.Tokenized","value":""},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","quality":0.8,"template":"aTemplate"}],"format":"ISO_19794_2","type":"FINGERPRINT_REFERENCE"}]}}]}`,
+			expectedErr: "attendantId.value: empty",
 		},
-		{
-			name:              "empty biometric references should return error",
-			input:             `{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"aSubjectID","projectId":"aProjectID","moduleId":{"className":"TokenizableString.Tokenized","value":"aModuleID"},"attendantId":{"className":"TokenizableString.Tokenized","value":"anAttendantID"},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","quality":0.8,"template":"aTemplate"}],"format":"ISO_19794_2","type":"FINGERPRINT_REFERENCE"},{"id":"anotherBiometricReferenceID","templates":[{"finger":"LEFT_THUMB","quality":0.9,"template":"anotherTemplate"}],"format":"ISO_19794_2","type":"FINGERPRINT_REFERENCE"}]}}]}`,
-			expectedErrPrefix: "expect 1 biometric reference",
+		"empty biometric references should return error": {
+			input:       `{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"aSubjectID","projectId":"aProjectID","moduleId":{"className":"TokenizableString.Tokenized","value":"aTokenizedModuleID"},"attendantId":{"className":"TokenizableString.Tokenized","value":"aTokenizedAttendantID"},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","quality":0.8,"template":"aTemplate"}],"format":"ISO_19794_2","type":"FINGERPRINT_REFERENCE"},{"id":"anotherBiometricReferenceID","templates":[{"finger":"LEFT_THUMB","quality":0.9,"template":"anotherTemplate"}],"format":"ISO_19794_2","type":"FINGERPRINT_REFERENCE"}]}}]}`,
+			expectedErr: "biometricReferences: expect length 1",
 		},
-		{
-			name:              "multiple biometric references should return error",
-			input:             `{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"aSubjectID","projectId":"aProjectID","moduleId":{"className":"TokenizableString.Tokenized","value":"aModuleID"},"attendantId":{"className":"TokenizableString.Tokenized","value":"anAttendantID"},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","quality":0.8,"template":"aTemplate"}],"format":"ISO_19794_2","type":"FINGERPRINT_REFERENCE"},{"id":"anotherBiometricReferenceID","templates":[{"finger":"LEFT_THUMB","quality":0.9,"template":"anotherTemplate"}],"format":"ISO_19794_2","type":"FINGERPRINT_REFERENCE"}]}}]}`,
-			expectedErrPrefix: "expect 1 biometric reference",
+		"multiple biometric references should return error": {
+			input:       `{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"aSubjectID","projectId":"aProjectID","moduleId":{"className":"TokenizableString.Tokenized","value":"aTokenizedModuleID"},"attendantId":{"className":"TokenizableString.Tokenized","value":"aTokenizedAttendantID"},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","quality":0.8,"template":"aTemplate"}],"format":"ISO_19794_2","type":"FINGERPRINT_REFERENCE"},{"id":"anotherBiometricReferenceID","templates":[{"finger":"LEFT_THUMB","quality":0.9,"template":"anotherTemplate"}],"format":"ISO_19794_2","type":"FINGERPRINT_REFERENCE"}]}}]}`,
+			expectedErr: "biometricReferences: expect length 1",
 		},
-		{
-			name:              "wrong biometric reference type should return error",
-			input:             `{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"aSubjectID","projectId":"aProjectID","moduleId":{"className":"TokenizableString.Tokenized","value":"aModuleID"},"attendantId":{"className":"TokenizableString.Tokenized","value":"anAttendantID"},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","quality":0.8,"template":"aTemplate"}],"format":"ISO_19794_2","type":"WRONG_TYPE"}]}}]}`,
-			expectedErrPrefix: "expect biometric reference type FINGERPRINT_REFERENCE",
+		"wrong biometric reference type should return error": {
+			input:       `{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"aSubjectID","projectId":"aProjectID","moduleId":{"className":"TokenizableString.Tokenized","value":"aTokenizedModuleID"},"attendantId":{"className":"TokenizableString.Tokenized","value":"aTokenizedAttendantID"},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","quality":0.8,"template":"aTemplate"}],"format":"ISO_19794_2","type":"WRONG_TYPE"}]}}]}`,
+			expectedErr: "biometricReferences[0].type: expect FINGERPRINT_REFERENCE, got WRONG_TYPE",
 		},
-		{
-			name:              "wrong biometric reference format should return error",
-			input:             `{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"aSubjectID","projectId":"aProjectID","moduleId":{"className":"TokenizableString.Tokenized","value":"aModuleID"},"attendantId":{"className":"TokenizableString.Tokenized","value":"anAttendantID"},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","quality":0.8,"template":"aTemplate"}],"format":"WRONG_FORMAT","type":"FINGERPRINT_REFERENCE"}]}}]}`,
-			expectedErrPrefix: "expect biometric reference format ISO_19794_2",
+		"wrong biometric reference format should return error": {
+			input:       `{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"aSubjectID","projectId":"aProjectID","moduleId":{"className":"TokenizableString.Tokenized","value":"aTokenizedModuleID"},"attendantId":{"className":"TokenizableString.Tokenized","value":"aTokenizedAttendantID"},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","quality":0.8,"template":"aTemplate"}],"format":"WRONG_FORMAT","type":"FINGERPRINT_REFERENCE"}]}}]}`,
+			expectedErr: "biometricReferences[0].format: expect ISO_19794_2, got WRONG_FORMAT",
 		},
-		{
-			name:              "valid input should return the correct subject specification",
-			input:             `{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"aSubjectID","projectId":"aProjectID","moduleId":{"className":"TokenizableString.Tokenized","value":"aModuleID"},"attendantId":{"className":"TokenizableString.Tokenized","value":"anAttendantID"},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","quality":0.8,"template":"aTemplate"}],"format":"ISO_19794_2","type":"FINGERPRINT_REFERENCE"}]}}]}`,
-			expectedErrPrefix: "",
-			expectedResult:    SubjectSpecification{SubjectID: "aSubjectID", ProjectID: "aProjectID", TokenizedModuleID: "aModuleID", TokenizedAtendantID: "anAttendantID"},
+		"valid input should return the correct subject specification": {
+			input:          `{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"aSubjectID","projectId":"aProjectID","moduleId":{"className":"TokenizableString.Tokenized","value":"aTokenizedModuleID"},"attendantId":{"className":"TokenizableString.Tokenized","value":"aTokenizedAttendantID"},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","quality":0.8,"template":"aTemplate"}],"format":"ISO_19794_2","type":"FINGERPRINT_REFERENCE"}]}}]}`,
+			expectedErr:    "",
+			expectedResult: SubjectSpecification{SubjectID: "aSubjectID", ProjectID: "aProjectID", TokenizedModuleID: "aTokenizedModuleID", TokenizedAtendantID: "aTokenizedAttendantID"},
 		},
 	}
 
-	for _, tc := range tcs {
-		t.Run(tc.name, func(t *testing.T) {
+	for name, tc := range tcs {
+		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			got, err := Check(tc.input)
-			if err != nil {
-				if !strings.HasPrefix(err.Error(), tc.expectedErrPrefix) {
-					t.Errorf("error got '%s', expectedErrPrefix '%v'", err.Error(), tc.expectedErrPrefix)
-				}
+			if tc.expectedErr != "" {
+				assert.ErrorContains(t, err, tc.expectedErr)
 				return
 			}
-			if tc.expectedErrPrefix != "" {
-				t.Errorf("error got nil, expectedErrPrefix %v", tc.expectedErrPrefix)
-			}
-			if got != tc.expectedResult {
-				t.Errorf("result got %v, expected %v", got, tc.expectedResult)
-			}
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expectedResult, got)
 		})
 	}
+}
+
+func ExampleCheck() {
+	input := `{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"aSubjectID","projectId":"aProjectID","moduleId":{"className":"TokenizableString.Tokenized","value":"aTokenizedModuleID"},"attendantId":{"className":"TokenizableString.Tokenized","value":"aTokenizedAttendantID"},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","quality":0.8,"template":"aTemplate"}],"format":"ISO_19794_2","type":"FINGERPRINT_REFERENCE"}]}}]}`
+	got, err := Check(input)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("Subject ID: %s, Project ID: %s, (Tokenized) Module ID: %s, (Tokenized) Attendant ID: %s\n", got.SubjectID, got.ProjectID, got.TokenizedModuleID, got.TokenizedAtendantID)
+	// Output:
+	// Subject ID: aSubjectID, Project ID: aProjectID, (Tokenized) Module ID: aTokenizedModuleID, (Tokenized) Attendant ID: aTokenizedAttendantID
+}
+
+func ExampleCheck_error() {
+	input := ""
+	_, err := Check(input)
+	if err != nil {
+		fmt.Println("Error:", err)
+	}
+	// Output:
+	// Error: input is empty
 }
