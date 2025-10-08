@@ -42,5 +42,6 @@ or as a string:
 ./subject-actions-checker --input="THE_SUBJECT_ACTIONS_STRING"
 ```
 
-The CLI will exit with a code `0` if the subject action is valid, or with a code `1` if it's not valid. 
-In addition, it will print a message to the standard output if the subject action is invalid.
+If the subject actions is valid, the CLI will print the subject specification as a JSON to the standard output and exit with
+a code `0`. 
+If the subject actions is not valid, the CLI will print an error message to the standard output and exit with a code `1`.

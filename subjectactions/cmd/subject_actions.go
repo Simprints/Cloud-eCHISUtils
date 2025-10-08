@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -25,8 +26,15 @@ func main() {
 		}
 		input = string(fileInput)
 	}
-	if _, err := subjectactions.Check(input); err != nil {
+	spec, err := subjectactions.Check(input)
+	if err != nil {
 		fmt.Printf("invalid input: %v\n", err)
 		os.Exit(1)
 	}
+	jsonSpec, err := json.Marshal(spec)
+	if err != nil {
+		fmt.Printf("failed to marshal subject specification: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println(string(jsonSpec))
 }
