@@ -18,7 +18,13 @@ Run `go test ./...`
 
 The `subjectActions` field [passed by Simprints ID to CommCare](https://simprints.gitbook.io/docs/development/simprints-for-developers/other-intergrations/commcare-integration/cosync#saving-the-biometric-data) can be validated by the code provided in this package.
 
-Look at the documentation of `subjectactions.Check(input string)` for more details.
+It accepts fingerprint and face biometric references, as well as external credentials (e.g. NHIS cards, QR codes).
+At least one biometric reference is always required. External credentials are optional, but are validated when present.
+Use the `subjectactions.WithAllowedFormats(...)` option to also restrict biometric reference formats to the ones configured
+for the project (e.g. `ISO_19794_2`, `NEC_1_5`, `RANK_ONE_3_1`).
+
+Look at the documentation of `subjectactions.Check(input string, opts ...Option)` for more details, including where in
+[Android-Simprints-ID](https://github.com/Simprints/Android-Simprints-ID) the schema is defined.
 
 ## CLI
 
@@ -54,7 +60,12 @@ or as a string:
 For example:
 ```shell
 # Unix based
-./subject-actions-checker --input='{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"aSubjectID","projectId":"aProjectID","moduleId":{"className":"TokenizableString.Tokenized","value":"aTokenizedModuleID"},"attendantId":{"className":"TokenizableString.Tokenized","value":"aTokenizedAttendantID"},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","quality":0.8,"template":"aTemplate"}],"format":"ISO_19794_2","type":"FINGERPRINT_REFERENCE"}]}}]}'
+./subject-actions-checker --input='{"events": [{"id": "anID", "type": "EnrolmentRecordCreation", "payload": {"subjectId":"aSubjectID","projectId":"aProjectID","moduleId":{"className":"TokenizableString.Tokenized","value":"aTokenizedModuleID"},"attendantId":{"className":"TokenizableString.Tokenized","value":"aTokenizedAttendantID"},"biometricReferences":[{"id":"aBiometricReferenceID","templates":[{"finger":"RIGHT_THUMB","template":"dGVtcGxhdGU="}],"format":"ISO_19794_2","type":"FINGERPRINT_REFERENCE"}]}}]}'
+```
+
+To also restrict the allowed biometric reference formats, pass a comma-separated list with `--formats`:
+```shell
+./subject-actions-checker --formats=ISO_19794_2,RANK_ONE_3_1 --file path/to/subject_actions.json
 ```
 
 If the subject actions is valid, the CLI will print the subject specification as a JSON to the standard output and exit with

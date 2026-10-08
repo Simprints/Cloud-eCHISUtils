@@ -5,14 +5,16 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/simprints/cloud-echisutils/subjectactions/pkg/subjectactions"
 )
 
 func main() {
-	var file, input string
+	var file, input, formats string
 	flag.StringVar(&file, "file", "", "file to read the input from, one of 'file' or 'input' must be provided")
 	flag.StringVar(&input, "input", "", "the input string, one of 'file' or 'input' must be provided")
+	flag.StringVar(&formats, "formats", "", "optional comma-separated list of allowed biometric reference formats (e.g. 'ISO_19794_2,RANK_ONE_3_1')")
 	flag.Parse()
 	if file == "" && input == "" {
 		fmt.Println("one of --file or --input must be provided")
@@ -26,7 +28,11 @@ func main() {
 		}
 		input = string(fileInput)
 	}
-	spec, err := subjectactions.Check(input)
+	var opts []subjectactions.Option
+	if formats != "" {
+		opts = append(opts, subjectactions.WithAllowedFormats(strings.Split(formats, ",")...))
+	}
+	spec, err := subjectactions.Check(input, opts...)
 	if err != nil {
 		fmt.Printf("invalid input: %v\n", err)
 		os.Exit(1)
