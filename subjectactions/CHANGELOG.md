@@ -1,6 +1,6 @@
 # subjectactions' changelog
 
-## 0.2.0 (unreleased)
+## 0.2.0 (October 8th, 2026)
 
 IMPROVEMENTS:
 
