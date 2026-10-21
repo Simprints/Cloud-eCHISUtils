@@ -1,6 +1,6 @@
 module github.com/simprints/cloud-echisutils/subjectactions
 
-go 1.24.2
+go 1.27.3
 
 require github.com/stretchr/testify v1.11.1
 
